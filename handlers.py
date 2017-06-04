@@ -23,15 +23,15 @@ class BaseHandler(tornado.web.RequestHandler):
         if not any([email, uid]):
             return None
         if email:
-            users = User.objects(email=email.decode('utf-8'))
-            if not users:
+            user = User.objects(email=email.decode('utf-8')).first()
+            if not user:
                 return None
-            return users[0]
+            return user
         elif uid:
-            users = WeiBoOauth.objects(uid=int(uid))
-            if not users:
+            user = WeiBoOauth.objects(uid=int(uid)).first()
+            if not user:
                 return None
-            return users[-1]
+            return user
 
 class IndexHandler(BaseHandler):
     def get(self):
@@ -219,8 +219,6 @@ class PayCallBackHandler(BaseHandler):
         if sign == sign_md5:
             print("msg: ",Msg)
             print("sResult: ",sResult)
-            #order = Order.objects(order_id=linkID)[0]
-            #order.pay_msg = Msg
             if sResult == 1:
                 pay_order.status = PayOrder.STATUS_SUC
                 pay_order.save()
