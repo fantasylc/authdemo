@@ -4,7 +4,7 @@ WEIBO_OAUTH = {
     'key': '2629645673',
     'secret': '',
 }
-WEIBO_REDIRECT_URI = SITE_URL + "/auth/weibo/callback/"
+WEIBO_REDIRECT_URI = SITE_URL + "/login/weibo/callback/"
 
 OAUTH_ACCESS_TOKEN_URL = "https://api.weibo.com/oauth2/access_token?"
 WEIBO_AUTHORIZE_URL = "https://api.weibo.com/oauth2/authorize?"
