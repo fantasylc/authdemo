@@ -213,15 +213,20 @@ class PayCallBackHandler(BaseHandler):
         }
         md5 = hashlib.md5(urlencode(sign_d).lower().encode("GB2312"))
         sign_md5 = md5.hexdigest()
+        print("--", sign_md5==sign)
         if sign == sign_md5:
-            order = Order.objects(order_id=linkID)[0]
-            order.pay_msg = Msg
-            if sResult == 1:
-                order.status == Order.STATUS_PAID
-                order.save()
-            else:
-                order.status == Order.STATUS_PAY_FAILED
-                order.save()
+            print("msg: ",Msg)
+            print("sResult: ",sResult)
+            #order = Order.objects(order_id=linkID)[0]
+            #order.pay_msg = Msg
+            # if sResult == 1:
+            #     print("")
+            #     #order.status == Order.STATUS_PAID
+            #     #order.save()
+            # else:
+            #     #order.status == Order.STATUS_PAY_FAILED
+            #     #order.save()
+
             self.write("ok=ok")
         else:
             self.write("ok=ok")
