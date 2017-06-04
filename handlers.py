@@ -215,11 +215,10 @@ class PayCallBackHandler(BaseHandler):
             linkID, ForUserId, sResult, Moneys, setting.STORE_KEY)
         md5 = hashlib.md5(sign_s.lower().encode("GB2312"))
         sign_md5 = md5.hexdigest()
-        print("--", sign_md5==sign)
         if sign == sign_md5:
             print("msg: ",Msg)
             print("sResult: ",sResult)
-            if sResult == 1:
+            if int(sResult) == 1:
                 pay_order.status = PayOrder.STATUS_SUC
                 pay_order.money = float(Moneys)
                 pay_order.save()
