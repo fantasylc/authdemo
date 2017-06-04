@@ -221,10 +221,11 @@ class PayCallBackHandler(BaseHandler):
             print("sResult: ",sResult)
             if sResult == 1:
                 pay_order.status = PayOrder.STATUS_SUC
+                pay_order.money = float(Moneys)
                 pay_order.save()
                 logger.info("order: {} pay success".format(linkID))
             else:
-                pay_order.status = PayOrder.STATUS_SUC
+                pay_order.status = PayOrder.STATUS_FAIL
                 pay_order.save()
                 logger.info("order: {} pay fail".format(linkID))
             self.write("ok")
