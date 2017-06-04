@@ -1,0 +1,32 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" >
+<head>
+<title>诚务通_Card_Php</title>
+</head>
+<body>
+    <form name="form1" method="post" action="/pay/card/" id="form1">
+        {% module xsrf_form_html() %}
+<div>
+</div>
+
+    <div>
+        <br />
+        诚务通售卡接口：<input name="interfaceurl" type="text" value="http://i.cwtong.net/gateway/cwt/" id="interfaceurl" style="width:259px;" /><br />
+        -------------------------------------------------------------------------------<br />
+        订单单号：<input name="order_id" type="text" value="208" id="orderid" /><br />
+        产品类型ID：<input name="typeid" type="text" value="208" id="typeid" /><br />
+        卡号：<input name="cardno" type="text" value="" id="cardno" /><br />
+        卡密：<input name="cardpwd" type="text" value="" id="cardpwd" /><br />
+        订单金额（卡面额）：<input name="moneys" type="text" value="10" id="money" /><br />
+        商户扩展数据：<input name="ext" type="text" value="" id="ext" /><br />
+        <input type="submit" name="Button1" value="支付" id="Button1" />&nbsp;
+        <br />
+        </div>
+    </form>
+
+    <br>
+   <br/>
+   <h3 style="color: red">{% raw errmsg %}</h3>
+</body>
+</html>
