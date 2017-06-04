@@ -33,6 +33,10 @@ class User(Document):
         else:
             return None, 'passwd is error'
 
+    def save(self, *args, **kwargs):
+        self.username = self.email.split("@")[0]
+        super().save(*args, **kwargs)
+
     def __repr__(self):
         return self.email
 
