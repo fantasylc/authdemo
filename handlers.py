@@ -260,18 +260,5 @@ class BankPayHandler(BaseHandler):
             "ext": ext
         }
         url = setting.BANK_PAY_URL + "?" + urlencode(url_d)
-        print(url)
-        http_client = AsyncHTTPClient()
-        try:
-            res = yield http_client.fetch(url, method="GET")
-        except Exception as e:
-            self.write("pay error")
-            logger.error(repr(e))
-            return
-        status = res.body.decode("GB2312").split("=")[1]
-        if status == "ok":
-            PayOrder(pay_order_id=order_id, status=PayOrder.STATUS_PAYINH).save()
-            self.write("提交成功")
-        else:
-            self.render("bankpay.html", errmsg="提交失败: {}".format(status))
-
+        PayOrder(pay_order_id=order_id, status=PayOrder.STATUS_PAYINH).save()
+        self.redirect(url)
