@@ -142,6 +142,7 @@ class WeiboCallBackHandler(BaseHandler):
                    expires=expires, username=username,
                    avatar=avatar).save()
         self.set_secure_cookie("uid", uid)
+        self.redirect("/")
 
 
 
