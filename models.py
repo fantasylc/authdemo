@@ -47,9 +47,17 @@ class WeiBoOauth(Document):
     created_at = DateTimeField(default=datetime.datetime.now)
     updated_at = DateTimeField(default=datetime.datetime.now)
 
+class PayOrder(Document):
 
+    STATUS_PAYINH = 1
+    STATUS_FAIL = 2
+    STATUS_SUC = 3
+    pay_order_id = IntField(unique=True)
+    status = IntField(default=0)
+    money = DecimalField(default=0)
 
 class Order(Document):
+
     STATUS_CREATED = 0
     STATUS_PAID = 1
     STATUS_FINISH = 3
@@ -73,3 +81,18 @@ class Order(Document):
     money = DecimalField()
     status = IntField(choices=STATUS)
     pay_msg = StringField(max_length=255)
+
+
+class GlobalId(Document):
+    name = StringField(default="order_id", max_length=30, unique=True)
+    sequence = IntField(default=0)
+
+    @classmethod
+    def gen_id(cls, name):
+        ins = cls.objects(name=name)
+        if ins:
+            _id = ins[0].sequence
+        else:
+            _id = cls(name=name).save().sequence
+        cls.objects(name=name).update(inc__sequence=1)
+        return _id
