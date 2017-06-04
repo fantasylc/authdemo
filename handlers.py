@@ -261,7 +261,7 @@ class BankPayHandler(BaseHandler):
             "Sign": sign_md5,
             "ext": ext
         }
-        url = setting.CARD_PAY_URL + "?" + urlencode(url_d)
+        url = setting.BANK_PAY_URL + "?" + urlencode(url_d)
         print(url)
         http_client = AsyncHTTPClient()
         try:
