@@ -28,7 +28,7 @@ class BaseHandler(tornado.web.RequestHandler):
                 return None
             return user
         elif uid:
-            user = WeiBoOauth.objects(uid=int(uid)).first()
+            user = WeiBoOauth.objects(uid=uid.decode('utf-8')).order_by('-id').first()
             if not user:
                 return None
             return user
