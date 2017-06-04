@@ -37,13 +37,15 @@ class User(Document):
         return self.email
 
 
-
 class WeiBoOauth(Document):
-    user_id = ObjectIdField()
+    user_id = ObjectIdField()           #绑定用户
     uid = StringField(max_length=30, default='', required=True)
     access_token = StringField(max_length=200, default='', required=True)
     expires = IntField()
+    username = StringField(max_length=100, default="")
+    avatar = StringField(max_length=200, default="")
     created_at = DateTimeField(default=datetime.datetime.now)
+    updated_at = DateTimeField(default=datetime.datetime.now)
 
 
 

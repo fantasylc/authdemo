@@ -6,10 +6,11 @@ from tornado import gen
 from tornado.httpclient import AsyncHTTPClient
 from tornado import escape
 import setting
-from models import User, Order
+from models import User, Order, WeiBoOauth
 import hmac
 import re
 import hashlib
+import datetime
 logger = logging.getLogger(__name__)
 
 
@@ -17,16 +18,21 @@ class BaseHandler(tornado.web.RequestHandler):
 
 
     def get_current_user(self):
-        email = self.get_secure_cookie("email")
+        email = self.get_secure_cookie("email", "")
+        uid = self.get_secure_cookie("uid", "")
         print(email)
-        if not email:
+        if not any([email, uid]):
             return None
-        user = User.objects(email=email.decode('utf-8'))
-        if not user:
-            return None
-        return user[0]
-
-
+        if email:
+            users = User.objects(email=email.decode('utf-8'))
+            if not users:
+                return None
+            return users[0]
+        elif uid:
+            users = WeiBoOauth.objects(uid=int(uid))
+            if not users:
+                return None
+            return users[-1]
 
 class IndexHandler(BaseHandler):
     def get(self):
@@ -120,7 +126,22 @@ class WeiboCallBackHandler(BaseHandler):
         access_token = token_json.get('access_token')
         expires_in = token_json.get('expires_in')
         expires = int(time.time())+expires_in
-        user_id = token_json.get('uid')
+        uid = token_json.get('uid')
+        para = urlencode({"uid":uid, "access_token":access_token})
+        weibo_user_info_url = setting.WEIBO_USER_INFO_URL + "?" + para
+        try:
+            res = yield http_client.fetch(weibo_user_info_url, method="GET")
+        except Exception as e:
+            logger.error(repr(e))
+            return
+        uf_json = escape.json_decode(escape.native_str(res.body))
+        username = uf_json.get("screen_name", "")
+        avatar = uf_json.get("avatar_large", "")
+        WeiBoOauth(uid=uid, access_token=access_token,
+                   expires=expires, username=username,
+                   avatar=avatar).save()
+        self.set_secure_cookie("uid", uid)
+
 
 
 class CardPayHandler(BaseHandler):
