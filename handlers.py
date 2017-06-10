@@ -133,7 +133,6 @@ class CardPayHandler(BaseHandler):
             "CardNumber": card_num,
             "CardPass": card_passwd,
             "Moneys": moneys,
-            "key": setting.STORE_KEY,
             "ReturnUrl": setting.PAY_CALLBACK_URL,
             "Sign": sign_md5,
             "ext": ext
@@ -228,7 +227,6 @@ class BankPayHandler(BaseHandler):
             "ForUserId": setting.STORE_ID,
             "Channelid": channelid,
             "Moneys": moneys,
-            "key": setting.STORE_KEY,
             "ReturnUrl": setting.PAY_CALLBACK_URL,
             "Sign": sign_md5,
             "ext": ext
