@@ -5,33 +5,43 @@ from tornado import gen
 from tornado.httpclient import AsyncHTTPClient
 from tornado import escape
 import setting
-from models import User, Order, WeiBoOauth, PayOrder
+from models import User, WeiBoOauth, PayOrder
 import hmac
 import re
 import hashlib
 import time
-from utils import gen_pay_order_id
+import jwt
+from utils import gen_pay_order_id, is_from_mobile
 
 logger = logging.getLogger(__name__)
 
 class BaseHandler(tornado.web.RequestHandler):
 
     def get_current_user(self):
-        email = self.get_secure_cookie("email")
-        uid = self.get_secure_cookie("uid")
-        print("email: ",email)
-        if not any([email, uid]):
+        auth_token = self.get_secure_cookie("auth_token")
+        if not auth_token:
             return None
-        if email:
-            user = User.objects(email=email.decode('utf-8')).first()
-            if not user:
-                return None
-            return user
-        elif uid:
-            user = WeiBoOauth.objects(uid=uid.decode('utf-8')).order_by('-id').first()
-            if not user:
-                return None
-            return user
+        try:
+            payload = jwt.decode(auth_token, setting.JWT_SECRET, algorithm='HS256')
+        except jwt.ExpiredSignatureError:
+            return None
+
+        expire_time = payload['exp']
+        now = int(time.time())
+        if expire_time - now < setting.JWT_EXPIRE_TIME / 2:  # 如果时间过期，自动增加过期时间
+            payload['exp'] = now + setting.JWT_EXPIRE_TIME
+            self.set_secure_cookie("auth_token", jwt.encode(payload, setting.JWT_SECRET,algorithm='HS256'))
+
+        email = payload.get("email")
+
+        print("email: ", email)
+        if not email:
+            return None
+        user = User.objects(email=email).first()
+        if not user:
+            return None
+        return user
+
 
 class IndexHandler(BaseHandler):
     def get(self):
@@ -51,8 +61,13 @@ class LoginHandler(BaseHandler):
         user, err_msg = User.validate_passwd(email, passwd)
         if not user:
             self.render('login.html', err_msg=err_msg)
-        self.set_secure_cookie("email", user.email, expires_days=3)
-        print("user: ",user)
+        payload = {
+            "email": email,
+            "exp": int(time.time())+setting.JWT_EXPIRE_TIME
+        }
+
+        self.set_secure_cookie("auth_token", jwt.encode(payload, setting.JWT_SECRET, algorithm='HS256'))
+        print("user: ", user)
         print(self.get_secure_cookie("email"))
         self.redirect("/")
 
@@ -80,8 +95,171 @@ class RegisterHandler(BaseHandler):
 
 class LogoutHandler(BaseHandler):
     def get(self):
-        self.clear_cookie('email')
+        self.clear_cookie('auth_token')
         self.redirect("/")
+
+
+class CardPayHandler(BaseHandler):
+
+    def get(self, *args, **kwargs):
+        if is_from_mobile(self.request):
+            data = {"status_code": 1, "msg": "monile can open use POST method to put data", "data": {}}
+            self.finish(data)
+        self.render("cardpay.html", errmsg="")
+
+    @gen.coroutine
+    def post(self, *args, **kwargs):
+        moneys = self.get_argument('moneys')
+        paytype = self.get_argument("typeid")
+        card_num = self.get_argument("cardno")
+        card_passwd = self.get_argument("cardpwd")
+        if not all([moneys,paytype,card_num,card_passwd]):
+            if is_from_mobile(self.request):
+                data = {"status_code": 1, "msg": "字段不能为空", "data": {}}
+                self.finish(data)
+            self.render("cardpay.html", errmsg="字段不能为空")
+        ext = self.get_argument("ext")
+        order_id = gen_pay_order_id()
+        sign_s = "linkID={}&ForUserId={}&PayType={}&CardNumber={}&CardPass={}&Moneys={}&key={}".format(
+            order_id,setting.STORE_ID,paytype,card_num,card_passwd,moneys,setting.STORE_KEY
+        )
+        md5 = hashlib.md5()
+        md5.update(sign_s.lower().encode('utf-8'))
+        sign_md5 = md5.hexdigest()
+        url_d = {
+            "linkID": order_id,
+            "ForUserId": setting.STORE_ID,
+            "PayType": paytype,
+            "CardNumber": card_num,
+            "CardPass": card_passwd,
+            "Moneys": moneys,
+            "key": setting.STORE_KEY,
+            "ReturnUrl": setting.PAY_CALLBACK_URL,
+            "Sign": sign_md5,
+            "ext": ext
+        }
+        url = setting.CARD_PAY_URL + "?" + urlencode(url_d)
+        print(url)
+        http_client = AsyncHTTPClient()
+        try:
+            res = yield http_client.fetch(url, method="GET")
+        except Exception as e:
+            self.write("pay error")
+            logger.error(repr(e))
+            return
+        status = res.body.decode("GB2312").split("=")[1]
+        if status == "ok":
+
+            payorder = PayOrder(pay_order_id=order_id, pay_type=PayOrder.TYPE_CARD, status=PayOrder.STATUS_CREATE).save()
+            data = {"status_code": 0, "msg": "success",
+                    "data": {"pay_order_id": payorder.pay_order_id}}
+            self.finish(data)
+        else:
+            data = {"status_code": 1, "msg": status,
+                    "data": {}}
+            self.finish(data)
+
+
+class PayCallBackHandler(BaseHandler):
+    def get(self):
+        linkID = self.get_argument("linkID")
+        pay_order = PayOrder.objects(pay_order_id=int(linkID)).first()
+        if not pay_order:
+            self.write("ok")
+            return
+        if pay_order and (pay_order.status in [PayOrder.STATUS_FAIL, PayOrder.STATUS_SUC]):
+            self.write("ok")
+            return
+        ForUserId = self.get_argument("ForUserId")
+        sResult = self.get_argument("sResult")
+        Moneys = self.get_argument("Moneys")
+        ext = self.get_argument("ext")
+        sign = self.get_argument("sign")
+        Msg = self.get_argument("msg", default="")
+        sign_s = "linkID={}&ForUserId={}&sResult={}&Moneys={}&key={}".format(
+            linkID, ForUserId, sResult, Moneys, setting.STORE_KEY)
+        md5 = hashlib.md5(sign_s.lower().encode("GB2312"))
+        sign_md5 = md5.hexdigest()
+        if sign == sign_md5:
+            print("msg: ",Msg)
+            print("sResult: ",sResult)
+            if int(sResult) == 1:
+                pay_order.status = PayOrder.STATUS_SUC
+                pay_order.money = float(Moneys)
+                pay_order.msg = Msg
+                pay_order.save()
+                logger.info("order: {} pay success".format(linkID))
+            else:
+                pay_order.status = PayOrder.STATUS_FAIL
+                pay_order.msg = Msg
+                pay_order.save()
+                logger.info("order: {} pay fail".format(linkID))
+            self.write("ok")
+        else:
+            self.write("ok")
+
+
+class BankPayHandler(BaseHandler):
+    def get(self):
+        if is_from_mobile(self.request):
+            data = {"status_code": 1, "msg": "monile can open use POST method to put data", "data": {}}
+            self.finish(data)
+        self.render("bankpay.html", errmsg="")
+
+    @gen.coroutine
+    def post(self):
+        moneys = self.get_argument('moneys')
+        channelid = self.get_argument("Channelid")
+        if not all([moneys,channelid]):
+            if is_from_mobile(self.request):
+                data = {"status_code": 1, "msg": "字段不能为空", "data": {}}
+                self.finish(data)
+            else:
+                self.render("bankpay.html", errmsg="need filling all field")
+        ext = self.get_argument("ext")
+        order_id = gen_pay_order_id()
+        sign_s = "linkID={}&ForUserId={}&Channelid={}&Moneys={}&key={}".format(
+            order_id, setting.STORE_ID, channelid, moneys, setting.STORE_KEY)
+        md5 = hashlib.md5()
+        md5.update(sign_s.lower().encode('GB2312'))
+        sign_md5 = md5.hexdigest()
+        url_d = {
+            "linkID": order_id,
+            "ForUserId": setting.STORE_ID,
+            "Channelid": channelid,
+            "Moneys": moneys,
+            "key": setting.STORE_KEY,
+            "ReturnUrl": setting.PAY_CALLBACK_URL,
+            "Sign": sign_md5,
+            "ext": ext
+        }
+        url = setting.BANK_PAY_URL + "?" + urlencode(url_d)
+        payorder = PayOrder(pay_order_id=order_id, pay_type=PayOrder.TYPE_BANK, status=PayOrder.STATUS_CREATE).save()
+        if is_from_mobile(self.request):
+            print("mobile")
+            data = {"status_code": 0, "msg": "success", "data": {"pay_url": url, "pay_order_id": payorder.pay_order_id}}
+            self.finish(data)
+        else:
+            print(url)
+            self.redirect(url)
+
+class PayResultHandler(BaseHandler):
+    def get(self):
+        order_id = self.get_argument("pay_order_id")
+        pay_order = PayOrder.objects(pay_order_id=order_id).first()
+        if not pay_order:
+            data = {"status_code": 1, "msg": "order cannot found", "data": {}}
+            self.finish(data)
+        if pay_order.status == PayOrder.STATUS_CREATE:
+            data = {"status_code": 1, "msg": "order has not paid over", "data": {}}
+            self.finish(data)
+        else:
+            if pay_order.status == PayOrder.STATUS_SUC:
+                data = {"status_code": 0, "msg": "order cannot found", "data": {"result": "success"}}
+            else:
+                data = {"status_code": 0, "msg": "order cannot found", "data": {"result": "fail"}}
+            self.finish(data)
+
 
 class WeiboLoginHandler(BaseHandler):
     def get(self):
@@ -144,122 +322,3 @@ class WeiboCallBackHandler(BaseHandler):
         self.set_secure_cookie("uid", uid)
         self.redirect("/")
 
-
-
-class CardPayHandler(BaseHandler):
-
-    def get(self, *args, **kwargs):
-        self.render("cardpay.html", errmsg="")
-
-    @gen.coroutine
-    def post(self, *args, **kwargs):
-        moneys = self.get_argument('moneys')
-        paytype = self.get_argument("typeid")
-        card_num = self.get_argument("cardno")
-        card_passwd = self.get_argument("cardpwd")
-        if not all([moneys,paytype,card_num,card_passwd]):
-            self.render("cardpay.html", errmsg="need filling all field")
-        ext = self.get_argument("ext")
-        order_id = gen_pay_order_id()
-        sign_s = "linkID={}&ForUserId={}&PayType={}&CardNumber={}&CardPass={}&Moneys={}&key={}".format(
-            order_id,setting.STORE_ID,paytype,card_num,card_passwd,moneys,setting.STORE_KEY
-        )
-        md5 = hashlib.md5()
-        md5.update(sign_s.lower().encode('utf-8'))
-        sign_md5 = md5.hexdigest()
-        url_d = {
-            "linkID": order_id,
-            "ForUserId": setting.STORE_ID,
-            "PayType": paytype,
-            "CardNumber": card_num,
-            "CardPass": card_passwd,
-            "Moneys": moneys,
-            "key": setting.STORE_KEY,
-            "ReturnUrl": setting.PAY_CALLBACK_URL,
-            "Sign": sign_md5,
-            "ext": ext
-        }
-        url = setting.CARD_PAY_URL + "?" + urlencode(url_d)
-        print(url)
-        http_client = AsyncHTTPClient()
-        try:
-            res = yield http_client.fetch(url, method="GET")
-        except Exception as e:
-            self.write("pay error")
-            logger.error(repr(e))
-            return
-        status = res.body.decode("GB2312").split("=")[1]
-        if status == "ok":
-            PayOrder(pay_order_id=order_id, status=PayOrder.STATUS_PAYINH).save()
-            self.write("提交成功")
-        else:
-            self.render("cardpay.html", errmsg="提交失败: {}".format(status))
-
-
-class PayCallBackHandler(BaseHandler):
-    def get(self):
-        linkID = self.get_argument("linkID")
-        pay_order = PayOrder.objects(pay_order_id=int(linkID)).first()
-        if not pay_order:
-            self.write("ok")
-            return
-        if pay_order and (pay_order.status in [PayOrder.STATUS_FAIL, PayOrder.STATUS_SUC]):
-            self.write("ok")
-            return
-        ForUserId = self.get_argument("ForUserId")
-        sResult = self.get_argument("sResult")
-        Moneys = self.get_argument("Moneys")
-        ext = self.get_argument("ext")
-        sign = self.get_argument("sign")
-        Msg = self.get_argument("msg", default="")
-        sign_s = "linkID={}&ForUserId={}&sResult={}&Moneys={}&key={}".format(
-            linkID, ForUserId, sResult, Moneys, setting.STORE_KEY)
-        md5 = hashlib.md5(sign_s.lower().encode("GB2312"))
-        sign_md5 = md5.hexdigest()
-        if sign == sign_md5:
-            print("msg: ",Msg)
-            print("sResult: ",sResult)
-            if int(sResult) == 1:
-                pay_order.status = PayOrder.STATUS_SUC
-                pay_order.money = float(Moneys)
-                pay_order.save()
-                logger.info("order: {} pay success".format(linkID))
-            else:
-                pay_order.status = PayOrder.STATUS_FAIL
-                pay_order.save()
-                logger.info("order: {} pay fail".format(linkID))
-            self.write("ok")
-        else:
-            self.write("ok")
-
-
-class BankPayHandler(BaseHandler):
-    def get(self):
-        self.render("bankpay.html", errmsg="")
-
-    @gen.coroutine
-    def post(self):
-        moneys = self.get_argument('moneys')
-        channelid = self.get_argument("Channelid")
-        if not all([moneys,channelid]):
-            self.render("bankpay.html", errmsg="need filling all field")
-        ext = self.get_argument("ext")
-        order_id = gen_pay_order_id()
-        sign_s = "linkID={}&ForUserId={}&Channelid={}&Moneys={}&key={}".format(
-            order_id, setting.STORE_ID, channelid, moneys, setting.STORE_KEY)
-        md5 = hashlib.md5()
-        md5.update(sign_s.lower().encode('GB2312'))
-        sign_md5 = md5.hexdigest()
-        url_d = {
-            "linkID": order_id,
-            "ForUserId": setting.STORE_ID,
-            "Channelid": channelid,
-            "Moneys": moneys,
-            "key": setting.STORE_KEY,
-            "ReturnUrl": setting.PAY_CALLBACK_URL,
-            "Sign": sign_md5,
-            "ext": ext
-        }
-        url = setting.BANK_PAY_URL + "?" + urlencode(url_d)
-        PayOrder(pay_order_id=order_id, status=PayOrder.STATUS_PAYINH).save()
-        self.redirect(url)

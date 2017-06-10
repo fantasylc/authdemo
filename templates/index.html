@@ -49,7 +49,7 @@
 
     <div class="container" style="text-align: center;color: red; margin-top: 10%">
        {% if not user%}<h3>你还木有登录</h3>{% end %}
-       {% if user%}<h3>欢迎，{{ user.username }}</h3>{% end %}
+       {% if user%}<h3>欢迎，{{ user.email }}</h3>{% end %}
     </div><!-- /.container -->
 
 

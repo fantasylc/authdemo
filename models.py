@@ -53,12 +53,21 @@ class WeiBoOauth(Document):
 
 class PayOrder(Document):
 
-    STATUS_PAYINH = 1
+    STATUS_CREATE = 1
     STATUS_FAIL = 2
     STATUS_SUC = 3
+
+    TYPE_CARD = 1
+    TYPE_BANK = 2
+
+
     pay_order_id = IntField(unique=True)
     status = IntField(default=0)
     money = DecimalField(default=0)
+    msg = StringField(max_length=300, default="")
+    pay_type = IntField(default=0)
+    created_at = DateTimeField(default=datetime.datetime.now)
+    updated_at = DateTimeField(default=datetime.datetime.now)
 
 class Order(Document):
 

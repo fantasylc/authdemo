@@ -15,6 +15,7 @@ from handlers import (
     CardPayHandler,
     BankPayHandler,
     PayCallBackHandler,
+    PayResultHandler,
 )
 import setting
 
@@ -30,8 +31,8 @@ class Application(tornado.web.Application):
             (r"/register/$", RegisterHandler),
             (r"/pay/card/$", CardPayHandler),
             (r"/pay/bank/$", BankPayHandler),
-            (r"/pay/callback/$", PayCallBackHandler)
-
+            (r"/pay/callback/$", PayCallBackHandler),
+            (r"/pay/result/$", PayResultHandler),
         ]
         settings = dict(
             template_path=os.path.join(os.path.dirname(__file__), "templates"),
