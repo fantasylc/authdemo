@@ -21,3 +21,7 @@ PAY_CALLBACK_URL = SITE_URL + "/pay/callback/"
 
 JWT_SECRET = "*&sdju6tiqqyw%!$twx(03u9!*0+2v!+w9cb=cd_9lvxj8-f&&"
 JWT_EXPIRE_TIME = 864300
+
+STATUS_SUC = 1
+STATUS_FAIL = 0
+STATUS_404 = 404

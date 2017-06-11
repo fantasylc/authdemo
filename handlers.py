@@ -103,7 +103,7 @@ class CardPayHandler(BaseHandler):
 
     def get(self, *args, **kwargs):
         if is_from_mobile(self.request):
-            data = {"status_code": 1, "msg": "monile can open use POST method to put data", "data": {}}
+            data = {"status_code": setting.STATUS_FAIL, "msg": "monile can open use POST method to put data", "data": {}}
             self.finish(data)
         self.render("cardpay.html", errmsg="")
 
@@ -115,7 +115,7 @@ class CardPayHandler(BaseHandler):
         card_passwd = self.get_argument("cardpwd")
         if not all([moneys,paytype,card_num,card_passwd]):
             if is_from_mobile(self.request):
-                data = {"status_code": 1, "msg": "字段不能为空", "data": {}}
+                data = {"status_code": setting.STATUS_FAIL, "msg": "字段不能为空", "data": {}}
                 self.finish(data)
             self.render("cardpay.html", errmsg="字段不能为空")
         ext = self.get_argument("ext")
@@ -152,11 +152,11 @@ class CardPayHandler(BaseHandler):
         if status == "ok":
 
             payorder = PayOrder(pay_order_id=order_id, pay_type=PayOrder.TYPE_CARD, status=PayOrder.STATUS_CREATE).save()
-            data = {"status_code": 0, "msg": "success",
+            data = {"status_code": setting.STATUS_SUC, "msg": "success",
                     "data": {"pay_order_id": payorder.pay_order_id}}
             self.finish(data)
         else:
-            data = {"status_code": 1, "msg": status,
+            data = {"status_code": setting.STATUS_FAIL, "msg": status,
                     "data": {}}
             self.finish(data)
 
@@ -196,14 +196,16 @@ class PayCallBackHandler(BaseHandler):
                 pay_order.save()
                 logger.info("order: {} pay fail".format(linkID))
             self.write("ok")
+            self.finish()
         else:
             self.write("ok")
+            self.finish()
 
 
 class BankPayHandler(BaseHandler):
     def get(self):
         if is_from_mobile(self.request):
-            data = {"status_code": 1, "msg": "monile can open use POST method to put data", "data": {}}
+            data = {"status_code": setting.STATUS_FAIL, "msg": "monile can open use POST method to put data", "data": {}}
             self.finish(data)
         self.render("bankpay.html", errmsg="")
 
@@ -213,7 +215,7 @@ class BankPayHandler(BaseHandler):
         channelid = self.get_argument("Channelid")
         if not all([moneys,channelid]):
             if is_from_mobile(self.request):
-                data = {"status_code": 1, "msg": "字段不能为空", "data": {}}
+                data = {"status_code": setting.STATUS_FAIL, "msg": "字段不能为空", "data": {}}
                 self.finish(data)
             else:
                 self.render("bankpay.html", errmsg="need filling all field")
@@ -239,7 +241,7 @@ class BankPayHandler(BaseHandler):
         payorder = PayOrder(pay_order_id=order_id, pay_type=PayOrder.TYPE_BANK, status=PayOrder.STATUS_CREATE).save()
         if is_from_mobile(self.request):
             print("mobile")
-            data = {"status_code": 0, "msg": "success", "data": {"pay_url": url, "pay_order_id": payorder.pay_order_id}}
+            data = {"status_code": setting.STATUS_SUC, "msg": "success", "data": {"pay_url": url, "pay_order_id": payorder.pay_order_id}}
             self.finish(data)
         else:
             print(url)
@@ -250,16 +252,16 @@ class PayResultHandler(BaseHandler):
         order_id = self.get_argument("pay_order_id")
         pay_order = PayOrder.objects(pay_order_id=order_id).first()
         if not pay_order:
-            data = {"status_code": 404, "msg": "order cannot found", "data": {}}
+            data = {"status_code": setting.STATUS_404, "msg": "order cannot found", "data": {}}
             self.finish(data)
         if pay_order.status == PayOrder.STATUS_CREATE:
-            data = {"status_code": 1, "msg": "order has not paid over", "data": {}}
+            data = {"status_code": setting.STATUS_FAIL, "msg": "order has not paid over", "data": {}}
             self.finish(data)
         else:
             if pay_order.status == PayOrder.STATUS_SUC:
-                data = {"status_code": 0, "msg": pay_order.msg, "data": {"result": "success"}}
+                data = {"status_code": setting.STATUS_SUC, "msg": pay_order.msg, "data": {"result": "success"}}
             else:
-                data = {"status_code": 0, "msg": pay_order.msg, "data": {"result": "fail"}}
+                data = {"status_code": setting.STATUS_SUC, "msg": pay_order.msg, "data": {"result": "fail"}}
             self.finish(data)
 
 
