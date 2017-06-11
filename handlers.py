@@ -137,6 +137,8 @@ class CardPayHandler(BaseHandler):
             "Sign": sign_md5,
             "ext": ext
         }
+        if not ext:
+            url_d.pop("ext")
         url = setting.CARD_PAY_URL + "?" + urlencode(url_d)
         print(url)
         http_client = AsyncHTTPClient()
@@ -231,6 +233,8 @@ class BankPayHandler(BaseHandler):
             "Sign": sign_md5,
             "ext": ext
         }
+        if not ext:
+            url_d.pop("ext")
         url = setting.BANK_PAY_URL + "?" + urlencode(url_d)
         payorder = PayOrder(pay_order_id=order_id, pay_type=PayOrder.TYPE_BANK, status=PayOrder.STATUS_CREATE).save()
         if is_from_mobile(self.request):
@@ -246,16 +250,16 @@ class PayResultHandler(BaseHandler):
         order_id = self.get_argument("pay_order_id")
         pay_order = PayOrder.objects(pay_order_id=order_id).first()
         if not pay_order:
-            data = {"status_code": 1, "msg": "order cannot found", "data": {}}
+            data = {"status_code": 404, "msg": "order cannot found", "data": {}}
             self.finish(data)
         if pay_order.status == PayOrder.STATUS_CREATE:
             data = {"status_code": 1, "msg": "order has not paid over", "data": {}}
             self.finish(data)
         else:
             if pay_order.status == PayOrder.STATUS_SUC:
-                data = {"status_code": 0, "msg": "order cannot found", "data": {"result": "success"}}
+                data = {"status_code": 0, "msg": pay_order.msg, "data": {"result": "success"}}
             else:
-                data = {"status_code": 0, "msg": "order cannot found", "data": {"result": "fail"}}
+                data = {"status_code": 0, "msg": pay_order.msg, "data": {"result": "fail"}}
             self.finish(data)
 
 
