@@ -16,6 +16,8 @@ from handlers import (
     BankPayHandler,
     PayCallBackHandler,
     PayResultHandler,
+    CardMobilePayHandler,
+    BankMobilePayHandler,
 )
 import setting
 
@@ -30,7 +32,9 @@ class Application(tornado.web.Application):
             (r"/login/weibo/callback/$", WeiboCallBackHandler),
             (r"/register/$", RegisterHandler),
             (r"/pay/card/$", CardPayHandler),
+            (r"/pay/mobile/card/$", CardMobilePayHandler),
             (r"/pay/bank/$", BankPayHandler),
+            (r"/pay/mobile/bank/$", BankMobilePayHandler),
             (r"/pay/callback/$", PayCallBackHandler),
             (r"/pay/result/$", PayResultHandler),
         ]
