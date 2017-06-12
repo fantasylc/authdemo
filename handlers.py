@@ -45,6 +45,8 @@ class BaseHandler(tornado.web.RequestHandler):
 
 class IndexHandler(BaseHandler):
     def get(self):
+        print("a:", self.xsrf_token)
+        print(self.request.headers['User-Agent'])
         self.render("index.html", user=self.current_user, content="")
 
 
@@ -120,26 +122,12 @@ class CardPayHandler(BaseHandler):
             self.render("cardpay.html", errmsg="字段不能为空")
         ext = self.get_argument("ext")
         order_id = gen_pay_order_id()
-        sign_s = "linkID={}&ForUserId={}&PayType={}&CardNumber={}&CardPass={}&Moneys={}&key={}".format(
+        sign_s = "linkid={}&foruserid={}&paytype={}&cardnumber={}&cardpass={}&moneys={}&key={}".format(
             order_id,setting.STORE_ID,paytype,card_num,card_passwd,moneys,setting.STORE_KEY
         )
         md5 = hashlib.md5()
         md5.update(sign_s.lower().encode('utf-8'))
         sign_md5 = md5.hexdigest()
-        url_d = {
-            "linkID": order_id,
-            "ForUserId": setting.STORE_ID,
-            "PayType": paytype,
-            "CardNumber": card_num,
-            "CardPass": card_passwd,
-            "Moneys": moneys,
-            "ReturnUrl": setting.PAY_CALLBACK_URL,
-            "Sign": sign_md5,
-            "ext": ext
-        }
-        if not ext:
-            url_d.pop("ext")
-
         gen_url = "linkid={}&foruserid={}&PayType={}&CardNumber={}&moneys={}&returnurl={}&sign={}".format(order_id,
                  setting.STORE_ID, paytype,card_num,card_passwd, moneys, setting.PAY_CALLBACK_URL, sign_md5)
         if ext:
@@ -170,14 +158,14 @@ class CardPayHandler(BaseHandler):
 
 class PayCallBackHandler(BaseHandler):
     def get(self):
-        linkID = self.get_argument("linkID", "")
-        ForUserId = self.get_argument("ForUserId", "")
-        sResult = self.get_argument("sResult", "")
-        Moneys = self.get_argument("Moneys", "")
+        linkID = self.get_argument("linkid", "")
+        ForUserId = self.get_argument("foruserid", "")
+        sResult = self.get_argument("sresult", "")
+        Moneys = self.get_argument("moneys", "")
         ext = self.get_argument("ext", "")
         sign = self.get_argument("sign", "")
         Msg = self.get_argument("msg", default="")
-        sign_s = "linkID={}&ForUserId={}&sResult={}&Moneys={}&key={}".format(
+        sign_s = "linkid={}&foruserId={}&sresult={}&moneys={}&key={}".format(
             linkID, ForUserId, sResult, Moneys, setting.STORE_KEY)
         md5 = hashlib.md5(sign_s.lower().encode("GB2312"))
         sign_md5 = md5.hexdigest()
@@ -209,21 +197,23 @@ class BankPayHandler(BaseHandler):
         if is_from_mobile(self.request):
             data = {"status_code": setting.STATUS_FAIL, "msg": "monile can open use POST method to put data", "data": {}}
             self.finish(data)
+            print("---------")
         self.render("bankpay.html", errmsg="")
 
     @gen.coroutine
     def post(self):
         moneys = self.get_argument('moneys')
-        channelid = self.get_argument("Channelid")
+        channelid = self.get_argument("channelid")
         if not all([moneys,channelid]):
             if is_from_mobile(self.request):
                 data = {"status_code": setting.STATUS_FAIL, "msg": "字段不能为空", "data": {}}
                 self.finish(data)
             else:
                 self.render("bankpay.html", errmsg="need filling all field")
+        print("lala")
         ext = self.get_argument("ext")
         order_id = gen_pay_order_id()
-        sign_s = "linkID={}&ForUserId={}&Channelid={}&Moneys={}&key={}".format(
+        sign_s = "linkid={}&foruserid={}&channelid={}&moneys={}&key={}".format(
             order_id, setting.STORE_ID, channelid, moneys, setting.STORE_KEY)
         md5 = hashlib.md5()
         md5.update(sign_s.lower().encode('GB2312'))
