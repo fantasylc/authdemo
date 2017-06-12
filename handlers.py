@@ -120,7 +120,7 @@ class CardPayHandler(BaseHandler):
                 data = {"status_code": setting.STATUS_FAIL, "msg": "字段不能为空", "data": {}}
                 self.finish(data)
             self.render("cardpay.html", errmsg="字段不能为空")
-        ext = self.get_argument("ext")
+        ext = self.get_argument("ext", "")
         order_id = gen_pay_order_id()
         sign_s = "linkid={}&foruserid={}&paytype={}&cardnumber={}&cardpass={}&moneys={}&key={}".format(
             order_id,setting.STORE_ID,paytype,card_num,card_passwd,moneys,setting.STORE_KEY
@@ -211,7 +211,7 @@ class BankPayHandler(BaseHandler):
             else:
                 self.render("bankpay.html", errmsg="need filling all field")
         print("lala")
-        ext = self.get_argument("ext")
+        ext = self.get_argument("ext", "")
         order_id = gen_pay_order_id()
         sign_s = "linkid={}&foruserid={}&channelid={}&moneys={}&key={}".format(
             order_id, setting.STORE_ID, channelid, moneys, setting.STORE_KEY)
