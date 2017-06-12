@@ -171,11 +171,6 @@ class CardPayHandler(BaseHandler):
 class PayCallBackHandler(BaseHandler):
     def get(self):
         linkID = self.get_argument("linkID", "")
-        pay_order = PayOrder.objects(pay_order_id=int(linkID)).first()
-        if not pay_order:
-            self.finish("no")
-        if pay_order and (pay_order.status in [PayOrder.STATUS_FAIL, PayOrder.STATUS_SUC]):
-            self.finish("ok")
         ForUserId = self.get_argument("ForUserId", "")
         sResult = self.get_argument("sResult", "")
         Moneys = self.get_argument("Moneys", "")
@@ -187,6 +182,11 @@ class PayCallBackHandler(BaseHandler):
         md5 = hashlib.md5(sign_s.lower().encode("GB2312"))
         sign_md5 = md5.hexdigest()
         if sign == sign_md5:
+            pay_order = PayOrder.objects(pay_order_id=int(linkID)).first()
+            if not pay_order:
+                self.finish("no")
+            if pay_order and (pay_order.status in [PayOrder.STATUS_FAIL, PayOrder.STATUS_SUC]):
+                self.finish("ok")
             if int(sResult) == 1:
                 pay_order.status = PayOrder.STATUS_SUC
                 pay_order.money = float(Moneys)
