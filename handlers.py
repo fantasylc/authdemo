@@ -158,10 +158,10 @@ class CardPayHandler(BaseHandler):
 
 class PayCallBackHandler(BaseHandler):
     def get(self):
-        linkID = self.get_argument("linkid", "")
-        ForUserId = self.get_argument("foruserid", "")
-        sResult = self.get_argument("sresult", "")
-        Moneys = self.get_argument("moneys", "")
+        linkID = self.get_argument("linkID", "")
+        ForUserId = self.get_argument("ForUserId", "")
+        sResult = self.get_argument("sResult", "")
+        Moneys = self.get_argument("Moneys", "")
         ext = self.get_argument("ext", "")
         sign = self.get_argument("sign", "")
         Msg = self.get_argument("msg", default="")
