@@ -109,11 +109,11 @@ class CardPayHandler(BaseHandler):
 
     @gen.coroutine
     def post(self, *args, **kwargs):
-        moneys = self.get_argument('moneys')
-        paytype = self.get_argument("typeid")
-        card_num = self.get_argument("cardno")
-        card_passwd = self.get_argument("cardpwd")
-        if not all([moneys,paytype,card_num,card_passwd]):
+        moneys = self.get_argument('moneys', "")
+        paytype = self.get_argument("typeid", "")
+        card_num = self.get_argument("cardno", "")
+        card_passwd = self.get_argument("cardpwd", "")
+        if not all([moneys, paytype, card_num, card_passwd]):
             if is_from_mobile(self.request):
                 data = {"status_code": setting.STATUS_FAIL, "msg": "字段不能为空", "data": {}}
                 self.finish(data)
@@ -139,7 +139,12 @@ class CardPayHandler(BaseHandler):
         }
         if not ext:
             url_d.pop("ext")
-        url = setting.CARD_PAY_URL + "?" + urlencode(url_d)
+
+        gen_url = "linkid={}&foruserid={}&PayType={}&CardNumber={}&moneys={}&returnurl={}&sign={}".format(order_id,
+                 setting.STORE_ID, paytype,card_num,card_passwd, moneys, setting.PAY_CALLBACK_URL, sign_md5)
+        if ext:
+            gen_url = gen_url + "&ext={}".format(ext)
+        url = setting.CARD_PAY_URL + "?" + gen_url
         print(url)
         http_client = AsyncHTTPClient()
         try:
@@ -165,17 +170,17 @@ class CardPayHandler(BaseHandler):
 
 class PayCallBackHandler(BaseHandler):
     def get(self):
-        linkID = self.get_argument("linkID")
+        linkID = self.get_argument("linkID", "")
         pay_order = PayOrder.objects(pay_order_id=int(linkID)).first()
         if not pay_order:
             self.finish("no")
         if pay_order and (pay_order.status in [PayOrder.STATUS_FAIL, PayOrder.STATUS_SUC]):
             self.finish("ok")
-        ForUserId = self.get_argument("ForUserId")
-        sResult = self.get_argument("sResult")
-        Moneys = self.get_argument("Moneys")
-        ext = self.get_argument("ext")
-        sign = self.get_argument("sign")
+        ForUserId = self.get_argument("ForUserId", "")
+        sResult = self.get_argument("sResult", "")
+        Moneys = self.get_argument("Moneys", "")
+        ext = self.get_argument("ext", "")
+        sign = self.get_argument("sign", "")
         Msg = self.get_argument("msg", default="")
         sign_s = "linkID={}&ForUserId={}&sResult={}&Moneys={}&key={}".format(
             linkID, ForUserId, sResult, Moneys, setting.STORE_KEY)
