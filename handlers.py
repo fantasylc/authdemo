@@ -253,13 +253,16 @@ class PayResultHandler(BaseHandler):
         if not self.current_user:
             self.finish({"status_code": 403, "msg": "you have not login", "data":{} })
         order_id = self.get_argument("pay_order_id")
-        pay_order = PayOrder.objects(pay_order_id=order_id, id=self.current_user.id).first()
+        print(self.current_user.id)
+        pay_order = PayOrder.objects(pay_order_id=int(order_id), user_id=str(self.current_user.id)).first()
         if not pay_order:
             data = {"status_code": setting.STATUS_404, "msg": "order cannot found", "data": {}}
             self.finish(data)
+            return
         if pay_order.status == PayOrder.STATUS_CREATE:
             data = {"status_code": setting.STATUS_FAIL, "msg": "order has not paid over", "data": {}}
             self.finish(data)
+            return
         else:
             if pay_order.status == PayOrder.STATUS_SUC:
                 data = {"status_code": setting.STATUS_SUC, "msg": pay_order.msg, "data": {"result": "success"}}
