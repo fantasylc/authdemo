@@ -150,8 +150,10 @@ class CardPayHandler(BaseHandler):
             return
         status = res.body.decode("GB2312").split("=")[1]
         if status == "ok":
-
-            payorder = PayOrder(pay_order_id=order_id, pay_type=PayOrder.TYPE_CARD, status=PayOrder.STATUS_CREATE).save()
+            if self.current_user:
+                payorder = PayOrder(user_id=str(self.current_user.id), pay_order_id=order_id, pay_type=PayOrder.TYPE_CARD, status=PayOrder.STATUS_CREATE).save()
+            else:
+                payorder = PayOrder(pay_order_id=order_id, pay_type=PayOrder.TYPE_CARD, status=PayOrder.STATUS_CREATE).save()
             data = {"status_code": setting.STATUS_SUC, "msg": "success",
                     "data": {"pay_order_id": payorder.pay_order_id}}
             self.finish(data)
@@ -166,11 +168,9 @@ class PayCallBackHandler(BaseHandler):
         linkID = self.get_argument("linkID")
         pay_order = PayOrder.objects(pay_order_id=int(linkID)).first()
         if not pay_order:
-            self.write("ok")
-            return
+            self.finish("no")
         if pay_order and (pay_order.status in [PayOrder.STATUS_FAIL, PayOrder.STATUS_SUC]):
-            self.write("ok")
-            return
+            self.finish("ok")
         ForUserId = self.get_argument("ForUserId")
         sResult = self.get_argument("sResult")
         Moneys = self.get_argument("Moneys")
@@ -182,24 +182,21 @@ class PayCallBackHandler(BaseHandler):
         md5 = hashlib.md5(sign_s.lower().encode("GB2312"))
         sign_md5 = md5.hexdigest()
         if sign == sign_md5:
-            print("msg: ",Msg)
-            print("sResult: ",sResult)
             if int(sResult) == 1:
                 pay_order.status = PayOrder.STATUS_SUC
                 pay_order.money = float(Moneys)
                 pay_order.msg = Msg
                 pay_order.save()
                 logger.info("order: {} pay success".format(linkID))
+                self.finish("ok")
             else:
                 pay_order.status = PayOrder.STATUS_FAIL
                 pay_order.msg = Msg
                 pay_order.save()
                 logger.info("order: {} pay fail".format(linkID))
-            self.write("ok")
-            self.finish()
+                self.finish("no")
         else:
-            self.write("ok")
-            self.finish()
+            self.finish("Sign_Erro{}".format(sign))
 
 
 class BankPayHandler(BaseHandler):
@@ -226,19 +223,17 @@ class BankPayHandler(BaseHandler):
         md5 = hashlib.md5()
         md5.update(sign_s.lower().encode('GB2312'))
         sign_md5 = md5.hexdigest()
-        url_d = {
-            "linkID": order_id,
-            "ForUserId": setting.STORE_ID,
-            "Channelid": channelid,
-            "Moneys": moneys,
-            "ReturnUrl": setting.PAY_CALLBACK_URL,
-            "Sign": sign_md5,
-            "ext": ext
-        }
-        if not ext:
-            url_d.pop("ext")
-        url = setting.BANK_PAY_URL + "?" + urlencode(url_d)
-        payorder = PayOrder(pay_order_id=order_id, pay_type=PayOrder.TYPE_BANK, status=PayOrder.STATUS_CREATE).save()
+
+        gen_url = "linkid={}&foruserid={}&channelid={}&moneys={}&returnurl={}&sign={}".format(order_id, setting.STORE_ID,
+                                                                                              channelid,moneys, setting.PAY_CALLBACK_URL,
+                                                                                              sign_md5)
+        if ext:
+            gen_url = gen_url + "&ext={}".format(ext)
+        url = setting.BANK_PAY_URL + "?" + gen_url
+        if self.current_user:
+            payorder = PayOrder(user_id=str(self.current_user.id), pay_order_id=order_id, pay_type=PayOrder.TYPE_BANK, status=PayOrder.STATUS_CREATE).save()
+        else:
+            payorder = PayOrder(pay_order_id=order_id, pay_type=PayOrder.TYPE_BANK, status=PayOrder.STATUS_CREATE).save()
         if is_from_mobile(self.request):
             print("mobile")
             data = {"status_code": setting.STATUS_SUC, "msg": "success", "data": {"pay_url": url, "pay_order_id": payorder.pay_order_id}}
@@ -247,10 +242,13 @@ class BankPayHandler(BaseHandler):
             print(url)
             self.redirect(url)
 
+
 class PayResultHandler(BaseHandler):
     def get(self):
+        if not self.current_user:
+            self.finish({"status_code": 403, "msg": "you have not login", "data":{} })
         order_id = self.get_argument("pay_order_id")
-        pay_order = PayOrder.objects(pay_order_id=order_id).first()
+        pay_order = PayOrder.objects(pay_order_id=order_id, id=self.current_user.id).first()
         if not pay_order:
             data = {"status_code": setting.STATUS_404, "msg": "order cannot found", "data": {}}
             self.finish(data)

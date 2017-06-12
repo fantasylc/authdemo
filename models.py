@@ -37,7 +37,7 @@ class User(Document):
         self.username = self.email.split("@")[0]
         super().save(*args, **kwargs)
 
-    def __repr__(self):
+    def __str__(self):
         return self.email
 
 
@@ -60,7 +60,7 @@ class PayOrder(Document):
     TYPE_CARD = 1
     TYPE_BANK = 2
 
-
+    user_id = StringField(max_length=24, default="")
     pay_order_id = IntField(unique=True)
     status = IntField(default=0)
     money = DecimalField(default=0)
