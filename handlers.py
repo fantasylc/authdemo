@@ -295,7 +295,7 @@ class PayCallBackHandler(BaseHandler):
                 logger.info("order: {} pay fail".format(linkID))
                 self.finish("ok")
         else:
-            self.finish("Sign_Erro{}".format(sign))
+            self.finish("Sign_Erro")
 
 
 class PayResultHandler(BaseHandler):
