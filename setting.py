@@ -17,7 +17,7 @@ STORE_KEY = ''
 
 BANK_PAY_URL = "http://api.cwtong.net/gateway/cwtb/"
 CARD_PAY_URL = "http://api.cwtong.net/gateway/cwt/"
-PAY_CALLBACK_URL = SITE_URL + "/pay/callback/"
+PAY_CALLBACK_URL = SITE_URL + "/pay/cwt/callback/"
 
 JWT_SECRET = "*&sdju6tiqqyw%!$twx(03u9!*0+2v!+w9cb=cd_9lvxj8-f&&"
 JWT_EXPIRE_TIME = 864300

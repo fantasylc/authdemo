@@ -31,8 +31,8 @@ class Application(tornado.web.Application):
             (r"/register/$", RegisterHandler),
             (r"/pay/cwt/web/$", CwtPayHandler),
             (r"/pay/cwt/mobile/$", CwtMobilePayHandler),
-            (r"/pay/callback/$", PayCallBackHandler),
-            (r"/pay/result/$", PayResultHandler),
+            (r"/pay/cwt/callback/$", PayCallBackHandler),
+            (r"/pay/cwt/result/$", PayResultHandler),
         ]
         settings = dict(
             template_path=os.path.join(os.path.dirname(__file__), "templates"),
