@@ -29,8 +29,8 @@ class Application(tornado.web.Application):
             (r"/login/weibo/$", WeiboLoginHandler),
             (r"/login/weibo/callback/$", WeiboCallBackHandler),
             (r"/register/$", RegisterHandler),
-            (r"/pay/cwt/$", CwtPayHandler),
-            (r"/pay/mobile/cwt/$", CwtMobilePayHandler),
+            (r"/pay/cwt/web/$", CwtPayHandler),
+            (r"/pay/cwt/mobile/$", CwtMobilePayHandler),
             (r"/pay/callback/$", PayCallBackHandler),
             (r"/pay/result/$", PayResultHandler),
         ]
