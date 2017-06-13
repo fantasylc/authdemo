@@ -245,11 +245,8 @@ class CwtMobilePayHandler(BaseHandler):
             md5.update(sign_s.lower().encode('GB2312'))
             sign_md5 = md5.hexdigest()
 
-            gen_url = "linkid={}&foruserid={}&channelid={}&moneys={}&returnurl={}&sign={}".format(order_id,
-                                                                                                  setting.STORE_ID,
-                                                                                                  channelid, moneys,
-                                                                                                  setting.PAY_CALLBACK_URL,
-                                                                                                  sign_md5)
+            gen_url = "linkid={}&foruserid={}&channelid={}&moneys={}&returnurl={}&sign={}".format(
+                order_id, setting.STORE_ID, channelid, moneys, setting.PAY_CALLBACK_URL, sign_md5)
             if ext:
                 gen_url = gen_url + "&ext={}".format(ext)
             url = setting.BANK_PAY_URL + "?" + gen_url
