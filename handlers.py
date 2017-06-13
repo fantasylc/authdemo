@@ -293,7 +293,7 @@ class PayCallBackHandler(BaseHandler):
                 pay_order.msg = Msg
                 pay_order.save()
                 logger.info("order: {} pay fail".format(linkID))
-                self.finish("no")
+                self.finish("ok")
         else:
             self.finish("Sign_Erro{}".format(sign))
 
